@@ -93,7 +93,6 @@ router.post('/:id/claim', async (req, res) => {
       return res.status(400).json({ error: 'Could not parse GitHub issue number' });
     }
 
-    // 2. Post a comment on GitHub
     const commentBody = `🌊 **Issue claim request by @${user.githubLogin}** via [Wave Compass](https://wavecompass.dev)\n\n_Note: Assign this to @${user.githubLogin} to mark this as claimed!!._`;
     
     await axios.post(
@@ -102,7 +101,7 @@ router.post('/:id/claim', async (req, res) => {
       { headers: githubHeaders }
     );
 
-    // 3. Assign the user to the issue on GitHub
+    // 2. Attempt to assign the user (Will likely fail if they are not a contributor yet, but good to keep as a fallback)
     try {
       await axios.post(
         `https://api.github.com/repos/${issue.repoName}/issues/${issueNum}/assignees`,
@@ -110,21 +109,14 @@ router.post('/:id/claim', async (req, res) => {
         { headers: githubHeaders }
       );
     } catch (assignError: any) {
-      // We catch this because GitHub often blocks assignment if the user hasn't 
-      // interacted with the repo before. We still want to mark it claimed in our DB!
       console.warn(`Could not assign @${user.githubLogin} on GitHub. They may need to comment manually first.`, assignError.response?.data || assignError.message);
     }
-
-    // 4. Update Prisma Database
-    const updatedIssue = await prisma.issue.update({
-      where: { id: issueId },
-      data: {
-        status: 'CLAIMED',
-        assigneeId: user.id,
-      },
+    
+    res.json({ 
+      success: true, 
+      message: 'Claim request posted to GitHub. Waiting for maintainer to assign the issue.' 
     });
 
-    res.json(updatedIssue);
   } catch (error: any) {
     console.error('Error claiming issue:', error.response?.data || error.message);
     res.status(500).json({ error: 'Failed to claim issue' });

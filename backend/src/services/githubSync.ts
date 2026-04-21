@@ -95,6 +95,23 @@ export async function syncWaveIssues() {
         if (labels.some((l) => l.toLowerCase() === 'help wanted'))
           difficulty = 'Intermediate';
 
+        // Check if the issue has assignees on GitHub
+        const isAssigned = issue.assignees && issue.assignees.length > 0;
+        let dbAssigneeId: string | null = null;
+
+        if (isAssigned) {
+          const githubAssigneeLogin = issue.assignees[0].login;
+          
+          // Attempt to find the assigned user in your Wave Compass database
+          const mappedUser = await prisma.user.findUnique({
+            where: { githubLogin: githubAssigneeLogin }
+          });
+
+          if (mappedUser) {
+            dbAssigneeId = mappedUser.id;
+          }
+        }
+
         await prisma.issue.upsert({
           where: { githubIssueId: issue.id.toString() },
           update: {
@@ -102,10 +119,8 @@ export async function syncWaveIssues() {
             labels,
             estimatedPoints,
             difficulty,
-            status:
-              issue.assignees && issue.assignees.length > 0
-                ? 'CLAIMED'
-                : 'OPEN',
+            status: isAssigned ? 'CLAIMED' : 'OPEN',
+            assigneeId: dbAssigneeId, // Link the user if they exist in your DB
             updatedAt: new Date(),
           },
           create: {
@@ -116,10 +131,8 @@ export async function syncWaveIssues() {
             labels,
             estimatedPoints,
             difficulty,
-            status:
-              issue.assignees && issue.assignees.length > 0
-                ? 'CLAIMED'
-                : 'OPEN',
+            status: isAssigned ? 'CLAIMED' : 'OPEN',
+            assigneeId: dbAssigneeId, // Link the user if they exist in your DB
           },
         });
       }
