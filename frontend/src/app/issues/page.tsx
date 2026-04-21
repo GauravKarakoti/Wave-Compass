@@ -26,10 +26,11 @@ export default function IssueExplorer() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"All" | "Stellar Wave">("All"); // <-- New Tab State
 
+  // 1. Fetch user data once on mount
   useEffect(() => {
-    const initializeData = async () => {
-      // 1. Check for authenticated user
+    const checkAuth = async () => {
       const token = localStorage.getItem("wave_token");
       if (token) {
         try {
@@ -39,16 +40,29 @@ export default function IssueExplorer() {
           if (userRes.ok) {
             setCurrentUser(await userRes.json());
           } else {
-            localStorage.removeItem("wave_token"); // Token expired/invalid
+            localStorage.removeItem("wave_token"); 
           }
         } catch (err) {
           console.error("Failed to fetch user session");
         }
       }
+    };
+    checkAuth();
+  }, []);
 
-      // 2. Fetch issues
+  // 2. Fetch issues whenever the active tab changes
+  useEffect(() => {
+    const fetchIssues = async () => {
+      setLoading(true);
       try {
-        const issuesRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/issues`);
+        const url = new URL(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/issues`);
+        
+        // Apply the label filter if the Stellar Wave tab is selected
+        if (activeTab === "Stellar Wave") {
+          url.searchParams.append("label", "Stellar Wave");
+        }
+
+        const issuesRes = await fetch(url.toString());
         if (issuesRes.ok) {
           setIssues(await issuesRes.json());
         }
@@ -59,8 +73,8 @@ export default function IssueExplorer() {
       }
     };
 
-    initializeData();
-  }, []);
+    fetchIssues();
+  }, [activeTab]);
 
   const handleClaim = async (issueId: string) => {
     if (!currentUser) {
@@ -75,9 +89,8 @@ export default function IssueExplorer() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // Secure the endpoint!
+          "Authorization": `Bearer ${token}` 
         },
-        // We pass the userId, but realistically the backend should read it from the JWT token for true security!
         body: JSON.stringify({ userId: currentUser.id }), 
       });
 
@@ -86,7 +99,6 @@ export default function IssueExplorer() {
         throw new Error(errorData.error || "Failed to claim issue");
       }
 
-      // Optimistically update the UI
       setIssues((prev) =>
         prev.map((issue) =>
           issue.id === issueId ? { ...issue, status: "CLAIMED" } : issue
@@ -105,11 +117,10 @@ export default function IssueExplorer() {
   return (
     <main className="min-h-screen p-8 bg-gray-50 text-gray-900">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8 pb-4 border-b">
+        <div className="flex justify-between items-center mb-6 pb-4 border-b">
           <h1 className="text-3xl font-bold">🌊 Wave Explorer</h1>
           {currentUser ? (
             <div className="flex items-center gap-4">
-              {/* Added Dashboard Link */}
               <a href="/dashboard" className="text-sm font-medium hover:text-blue-600 transition">
                 Dashboard
               </a>
@@ -123,14 +134,39 @@ export default function IssueExplorer() {
           )}
         </div>
 
+        {/* --- ADDED TAB NAVIGATION --- */}
+        <div className="flex space-x-6 mb-6 border-b border-gray-200">
+          <button
+            className={`pb-3 px-1 font-medium text-sm transition-colors ${
+              activeTab === "All"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-500 hover:text-gray-800"
+            }`}
+            onClick={() => setActiveTab("All")}
+          >
+            All Issues
+          </button>
+          <button
+            className={`pb-3 px-1 font-medium text-sm transition-colors ${
+              activeTab === "Stellar Wave"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-500 hover:text-gray-800"
+            }`}
+            onClick={() => setActiveTab("Stellar Wave")}
+          >
+            ⭐ Stellar Wave
+          </button>
+        </div>
+
         {loading ? (
-          <p>Loading issues...</p>
+          <p className="text-gray-500 py-10 text-center animate-pulse">Loading issues...</p>
+        ) : issues.length === 0 ? (
+          <p className="text-gray-500 py-10 text-center">No issues found for this filter.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {issues.map((issue) => (
               <div key={issue.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between">
                 <div>
-                  {/* Issue Header Info */}
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded">
                       {issue.repoName}
@@ -160,7 +196,6 @@ export default function IssueExplorer() {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="mt-4 flex gap-2">
                   <a 
                     href={issue.url} 

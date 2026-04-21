@@ -8,10 +8,9 @@ const router = Router();
 // Ensure this matches the secret used in your auth.ts route
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_please_change';
 
-// GET /api/issues - Fetch all open issues, with optional filtering
 router.get('/', async (req, res) => {
   try {
-    const { difficulty, repoName } = req.query;
+    const { difficulty, repoName, label } = req.query; // Add label to destructured query
 
     // Build the query dynamically based on optional filters
     const whereClause: any = {
@@ -23,6 +22,12 @@ router.get('/', async (req, res) => {
     }
     if (repoName) {
       whereClause.repoName = String(repoName);
+    }
+    // New: Filter by label if it's provided
+    if (label) {
+      whereClause.labels = {
+        has: String(label), // Prisma Postgres array filter
+      };
     }
 
     const issues = await prisma.issue.findMany({
