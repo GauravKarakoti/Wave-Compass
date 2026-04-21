@@ -3,10 +3,15 @@ import prisma from '../prisma';
 
 const WAVE_PROGRAM_ID = 'fdc01c95-806f-4b6a-998b-a6ed37e0d81b';
 
-// 🔹 Fetch repos dynamically from Drips
-async function fetchWaveRepos(): Promise<string[]> {
+type Repo = {
+  fullName: string;
+  url: string;
+  stars: number;
+};
+
+async function fetchWaveRepos(): Promise<Repo[]> {
   let page = 1;
-  const allRepos: string[] = [];
+  const allRepos: Repo[] = [];
 
   while (true) {
     const res = await axios.get(
@@ -22,12 +27,17 @@ async function fetchWaveRepos(): Promise<string[]> {
         // },
       }
     );
-
     const repos = res.data?.data || [];
 
     if (!repos.length) break;
 
-    allRepos.push(...repos.map((r: any) => r.fullName));
+    allRepos.push(
+        ...repos.map((r: any) => ({
+            fullName: r.repo.gitHubRepoFullName,
+            url: r.repo.gitHubRepoUrl,
+            stars: r.repo.stargazersCount,
+        }))
+    );
     page++;
   }
 
@@ -49,8 +59,8 @@ export async function syncWaveIssues() {
 
   for (const repo of repos) {
     try {
-      const response = await axios.get(
-        `https://api.github.com/repos/${repo}/issues`,
+        const response = await axios.get(
+        `https://api.github.com/repos/${repo.fullName}/issues`,
         {
           params: {
             state: 'open',
@@ -100,7 +110,7 @@ export async function syncWaveIssues() {
           },
           create: {
             githubIssueId: issue.id.toString(),
-            repoName: repo,
+            repoName: repo.fullName,
             title: issue.title,
             url: issue.html_url,
             labels,
@@ -114,9 +124,9 @@ export async function syncWaveIssues() {
         });
       }
 
-      console.log(`✅ Synced ${repo}`);
+      console.log(`✅ Synced ${repo.fullName}`);
     } catch (error: any) {
-      console.error(`❌ Failed for ${repo}:`, error?.response?.status || error.message);
+      console.error(`❌ Failed for${repo.fullName}:`, error?.response?.status || error.message);
     }
   }
 

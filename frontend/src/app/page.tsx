@@ -1,3 +1,5 @@
+"use client";
+
 export default function Home() {
   const handleLogin = () => {
     // Redirect directly to the Express backend route
