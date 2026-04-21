@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AuthSuccess() {
+// 1. Move the logic that uses `useSearchParams` into a separate component
+function AuthSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -31,5 +32,23 @@ export default function AuthSuccess() {
         </h1>
       </div>
     </div>
+  );
+}
+
+// 2. Wrap that component in a Suspense boundary in the default export
+export default function AuthSuccess() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gray-50 text-gray-900">
+          <div className="text-center">
+            <p className="text-2xl mb-4 animate-pulse">🌊</p>
+            <h1 className="text-xl font-medium">Loading...</h1>
+          </div>
+        </div>
+      }
+    >
+      <AuthSuccessContent />
+    </Suspense>
   );
 }
