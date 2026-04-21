@@ -1,0 +1,50 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  githubId      String    @unique
+  githubLogin   String    @unique
+  avatarUrl     String?
+  pointsEarned  Int       @default(0)
+  role          Role      @default(CONTRIBUTOR)
+  claimedIssues Issue[]   @relation("UserClaims")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Issue {
+  id              String   @id @default(uuid())
+  githubIssueId   String   @unique
+  repoName        String
+  title           String
+  url             String
+  labels          String[]
+  estimatedPoints Int      @default(0)
+  difficulty      String?
+  status          IssueStatus @default(OPEN)
+  
+  // Claim tracking
+  assigneeId      String?
+  assignee        User?    @relation("UserClaims", fields: [assigneeId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum Role {
+  CONTRIBUTOR
+  MAINTAINER
+}
+
+enum IssueStatus {
+  OPEN
+  CLAIMED
+  IN_PROGRESS
+  MERGED
+}
