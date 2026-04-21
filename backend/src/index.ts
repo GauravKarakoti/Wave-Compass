@@ -1,15 +1,12 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import prisma from './prisma';
 import authRoutes from './routes/auth';
 import cron from 'node-cron';
 import { syncWaveIssues } from './services/githubSync';
 
-dotenv.config();
-
 const app = express();
-const prisma = new PrismaClient();
 const PORT = process.env.PORT || 8000;
 
 app.use(cors());

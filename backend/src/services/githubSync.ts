@@ -1,7 +1,5 @@
 import axios from 'axios';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../prisma';
 
 const WAVE_PROGRAM_ID = 'fdc01c95-806f-4b6a-998b-a6ed37e0d81b';
 
