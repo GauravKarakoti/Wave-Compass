@@ -5,6 +5,7 @@ import prisma from './prisma';
 import authRoutes from './routes/auth';
 import cron from 'node-cron';
 import { syncWaveIssues } from './services/githubSync';
+import issueRoutes from './routes/issues';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -12,6 +13,7 @@ const PORT = process.env.PORT || 8000;
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
+app.use('/api/issues', issueRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
